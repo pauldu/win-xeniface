@@ -29,30 +29,73 @@
  * SUCH DAMAGE.
  */
 
+/*! \file store_interface.h
+    \brief XENBUS STORE Interface
+
+    This interface provides access to XenStore
+*/
+
 #ifndef _XENBUS_STORE_INTERFACE_H
 #define _XENBUS_STORE_INTERFACE_H
 
 #ifndef _WINDLL
 
+/*! \typedef XENBUS_STORE_TRANSACTION
+    \brief XenStore transaction handle
+*/
 typedef struct _XENBUS_STORE_TRANSACTION    XENBUS_STORE_TRANSACTION, *PXENBUS_STORE_TRANSACTION;
+
+/*! \typedef XENBUS_STORE_WATCH
+    \brief XenStore watch handle
+*/
 typedef struct _XENBUS_STORE_WATCH          XENBUS_STORE_WATCH, *PXENBUS_STORE_WATCH;
 
+/*! \typedef XENBUS_STORE_ACQUIRE
+    \brief Acquire a reference to the STORE interface
+
+    \param Interface The interface header
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_ACQUIRE)(
     IN  PINTERFACE  Interface
     );
 
+/*! \typedef XENBUS_STORE_RELEASE
+    \brief Release a reference to the STORE interface
+
+    \param Interface The interface header
+*/  
 typedef VOID
 (*XENBUS_STORE_RELEASE)(
     IN  PINTERFACE  Interface
     );
 
+/*! \typedef XENBUS_STORE_FREE
+    \brief Free a memory buffer allocated by the STORE interface
+
+    \param Interface The interface header
+    \param Buffer Pointer to the memory buffer
+*/  
 typedef VOID
 (*XENBUS_STORE_FREE)(
     IN  PINTERFACE  Interface,
     IN  PCHAR       Buffer
     );
 
+/*! \typedef XENBUS_STORE_READ
+    \brief Read a value from XenStore
+
+    \param Interface The interface header
+    \param Transaction The transaction handle (NULL if this read is not
+    part of a transaction)
+    \param Prefix An optional prefix for the \a Node
+    \param Node The concatenation of the \a Prefix and this value specifies
+    the XenStore key to read
+    \param A pointer to a pointer that will be initialized with a memory
+    buffer containing the value read
+
+    The \a Buffer should be freed using \a XENBUS_STORE_FREE
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_READ)(
     IN  PINTERFACE                  Interface,
@@ -62,6 +105,20 @@ typedef NTSTATUS
     OUT PCHAR                       *Buffer
     );
 
+/*! \typedef XENBUS_STORE_PRINTF
+    \brief Write a value to XenStore
+
+    \param Interface The interface header
+    \param Transaction The transaction handle (NULL if this write is not
+    part of a transaction)
+    \param Prefix An optional prefix for the \a Node
+    \param Node The concatenation of the \a Prefix and this value specifies
+    the XenStore key to write
+    \param Format A format specifier
+    \param ... Additional parameters required by \a Format
+
+    If the \a Node does not exist then it is created
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_PRINTF)(
     IN  PINTERFACE                  Interface,
@@ -72,6 +129,16 @@ typedef NTSTATUS
     ...
     );
 
+/*! \typedef XENBUS_STORE_REMOVE
+    \brief Remove a key from XenStore
+
+    \param Interface The interface header
+    \param Transaction The transaction handle (NULL if this removal is not
+    part of a transaction)
+    \param Prefix An optional prefix for the \a Node
+    \param Node The concatenation of the \a Prefix and this value specifies
+    the XenStore key to remove
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_REMOVE)(
     IN  PINTERFACE                  Interface,
@@ -80,6 +147,20 @@ typedef NTSTATUS
     IN  PCHAR                       Node
     );
 
+/*! \typedef XENBUS_STORE_DIRECTORY
+    \brief Enumerate all immediate child keys of a XenStore key
+
+    \param Interface The interface header
+    \param Transaction The transaction handle (NULL if this removal is not
+    part of a transaction)
+    \param Prefix An optional prefix for the \a Node
+    \param Node The concatenation of the \a Prefix and this value specifies
+    the XenStore key to enumerate
+    \param A pointer to a pointer that will be initialized with a memory
+    buffer containing a NUL separated list of key names
+
+    The \a Buffer should be freed using \a XENBUS_STORE_FREE
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_DIRECTORY)(
     IN  PINTERFACE                  Interface,
@@ -89,12 +170,29 @@ typedef NTSTATUS
     OUT PCHAR                       *Buffer
     );
 
+/*! \typedef XENBUS_STORE_TRANSACTION_START
+    \brief Start a XenStore transaction
+
+    \param Interface The interface header
+    \param Transaction Pointer to a transaction handle to be initialized
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_TRANSACTION_START)(
     IN  PINTERFACE                  Interface,
     OUT PXENBUS_STORE_TRANSACTION   *Transaction
     );
 
+/*! \typedef XENBUS_STORE_TRANSACTION_END
+    \brief End a XenStore transaction
+
+    \param Interface The interface header
+    \param Transaction The transaction handle
+    \param Commit Set to TRUE if actions performed within the transaction should
+    be made visible, or FALSE if they should not be
+
+    If \a Commit is TRUE and the transaction to found to clash then
+    STATUS_RETRY will be returned
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_TRANSACTION_END)(
     IN  PINTERFACE                  Interface,
@@ -102,6 +200,17 @@ typedef NTSTATUS
     IN  BOOLEAN                     Commit
     );
 
+/*! \typedef XENBUS_STORE_WATCH_ADD
+    \brief Add a XenStore watch
+
+    \param Interface The interface header
+    \param Prefix An optional prefix for the \a Node
+    \param Node The concatenation of the \a Prefix and this value specifies
+    the XenStore key to watch
+    \param Event A pointer to an event object to be signalled when the
+    watch fires
+    \param Watch A pointer to a watch handle to be initialized
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_WATCH_ADD)(
     IN  PINTERFACE          Interface,
@@ -111,12 +220,28 @@ typedef NTSTATUS
     OUT PXENBUS_STORE_WATCH *Watch
     );
 
+/*! \typedef XENBUS_STORE_WATCH_REMOVE
+    \brief Remove a XenStore watch
+
+    \param Interface The interface header
+    \param Watch The watch handle
+*/  
 typedef NTSTATUS
 (*XENBUS_STORE_WATCH_REMOVE)(
     IN  PINTERFACE          Interface,
     IN  PXENBUS_STORE_WATCH Watch
     );
 
+/*! \typedef XENBUS_STORE_POLL
+    \brief Poll for XenStore activity
+
+    \param Interface The interface header
+
+    If it is necessary to spin at DISPATCH_LEVEL waiting for XenStore
+    activity then this will block the normal STORE interface DPC so this
+    method must be regularly invoked during the spin loop to check for
+    XenStore activity
+*/  
 typedef VOID
 (*XENBUS_STORE_POLL)(
     IN  PINTERFACE  Interface
@@ -142,8 +267,14 @@ struct _XENBUS_STORE_INTERFACE_V1 {
     XENBUS_STORE_POLL               StorePoll;
 };
 
+/*! \struct _XENBUS_STORE_INTERFACE_V1
+    \brief STORE interface version 1
+*/
 typedef struct _XENBUS_STORE_INTERFACE_V1 XENBUS_STORE_INTERFACE, *PXENBUS_STORE_INTERFACE;
 
+/*! \def XENBUS_STORE
+    \brief Macro at assist in method invocation
+*/
 #define XENBUS_STORE(_Method, _Interface, ...)    \
     (_Interface)->Store ## _Method((PINTERFACE)(_Interface), __VA_ARGS__)
 
